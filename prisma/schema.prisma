@@ -1,0 +1,170 @@
+// Prisma schema for the photography management backend
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MANAGER
+  PHOTOGRAPHER
+  EDITOR
+  ASSISTANT
+}
+
+enum EventCategory {
+  WEDDING
+  CORPORATE
+  PHOTOSHOOT
+  BIRTHDAY
+  BURIAL
+  OTHER
+}
+
+enum UploadStatus {
+  PENDING
+  COMPLETE
+  FAILED
+}
+
+enum BookingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Country {
+  NG // Nigeria
+  UK // United Kingdom
+}
+
+model User {
+  id            String              @id @default(cuid())
+  email         String              @unique
+  name          String
+  passwordHash  String
+  role          Role                @default(PHOTOGRAPHER)
+  phone         String?
+  countryCode   String?
+  country       Country             @default(NG)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  assignments   BookingAssignment[]
+  uploads       Photo[]
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  avatarUrl String?
+  country   Country   @default(NG)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  events   Event[]
+  bookings Booking[]
+}
+
+model Event {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  category        EventCategory
+  description     String?
+  date            DateTime?
+  location        String?
+  coverImageUrl   String?
+  googleDriveUrl  String?
+  driveFolderId   String?        // Store extracted folder ID for easier access
+  country         Country        @default(NG)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  clientId String?
+  client   Client?        @relation(fields: [clientId], references: [id])
+
+  photos             Photo[]
+  bookings           Booking[]
+  downloadSelections DownloadSelection[]
+
+  @@index([category])
+  @@index([date])
+  @@index([country])
+}
+
+model Photo {
+  id            String        @id @default(cuid())
+  eventId       String
+  event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  url           String
+  driveFileId   String?       // Store Google Drive file ID for direct access
+  caption       String?
+  status        UploadStatus  @default(PENDING)
+  uploadedById  String?
+  uploadedBy    User?         @relation(fields: [uploadedById], references: [id])
+  createdAt     DateTime      @default(now())
+
+  @@index([eventId])
+  @@index([driveFileId])
+}
+
+model DownloadSelection {
+  id         String   @id @default(cuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  photoIds   String   // JSON array of photo IDs or drive file IDs
+  token      String   @unique
+  expiresAt  DateTime? // Optional expiration
+  createdAt  DateTime @default(now())
+
+  @@index([token])
+  @@index([eventId])
+}
+
+model Booking {
+  id             String          @id @default(cuid())
+  title          String?
+  eventId        String?
+  event          Event?          @relation(fields: [eventId], references: [id])
+  clientId       String
+  client         Client          @relation(fields: [clientId], references: [id])
+  dateTime       DateTime
+  location       String?
+  approvalStatus ApprovalStatus  @default(PENDING)
+  status         BookingStatus   @default(SCHEDULED)
+  country        Country         @default(NG)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  assigned BookingAssignment[]
+
+  @@index([clientId])
+  @@index([eventId])
+  @@index([dateTime])
+  @@index([country])
+}
+
+model BookingAssignment {
+  bookingId  String
+  userId     String
+  assignedAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([bookingId, userId])
+  @@index([userId])
+}
