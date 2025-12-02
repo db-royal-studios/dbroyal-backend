@@ -19,21 +19,24 @@ export declare class EventsService {
     }): Promise<{
         service: {
             id: string;
-            slug: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
             title: string;
+            slug: string;
             subtitle: string | null;
+            description: string;
             imageUrl: string | null;
             isVisible: boolean;
         };
     } & {
         id: string;
         name: string;
+        country: import(".prisma/client").$Enums.Country;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
-        serviceId: string;
         description: string | null;
+        serviceId: string;
         date: Date | null;
         location: string | null;
         coverImageUrl: string | null;
@@ -41,34 +44,34 @@ export declare class EventsService {
         generatedCoverImageProxyUrl: string | null;
         googleDriveUrl: string | null;
         driveFolderId: string | null;
-        country: import(".prisma/client").$Enums.Country;
         syncStatus: import(".prisma/client").$Enums.SyncStatus;
         lastSyncedAt: Date | null;
         syncErrorMessage: string | null;
         driveChangeToken: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         clientId: string | null;
     }>;
     findAll(country?: Country, serviceId?: string, page?: number, limit?: number): Promise<{
         data: ({
             service: {
                 id: string;
-                slug: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
                 title: string;
+                slug: string;
                 subtitle: string | null;
+                description: string;
                 imageUrl: string | null;
                 isVisible: boolean;
             };
         } & {
             id: string;
             name: string;
+            country: import(".prisma/client").$Enums.Country;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
-            serviceId: string;
             description: string | null;
+            serviceId: string;
             date: Date | null;
             location: string | null;
             coverImageUrl: string | null;
@@ -76,13 +79,10 @@ export declare class EventsService {
             generatedCoverImageProxyUrl: string | null;
             googleDriveUrl: string | null;
             driveFolderId: string | null;
-            country: import(".prisma/client").$Enums.Country;
             syncStatus: import(".prisma/client").$Enums.SyncStatus;
             lastSyncedAt: Date | null;
             syncErrorMessage: string | null;
             driveChangeToken: string | null;
-            createdAt: Date;
-            updatedAt: Date;
             clientId: string | null;
         })[];
         pagination: {
@@ -96,21 +96,24 @@ export declare class EventsService {
         data: ({
             service: {
                 id: string;
-                slug: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
                 title: string;
+                slug: string;
                 subtitle: string | null;
+                description: string;
                 imageUrl: string | null;
                 isVisible: boolean;
             };
         } & {
             id: string;
             name: string;
+            country: import(".prisma/client").$Enums.Country;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
-            serviceId: string;
             description: string | null;
+            serviceId: string;
             date: Date | null;
             location: string | null;
             coverImageUrl: string | null;
@@ -118,13 +121,10 @@ export declare class EventsService {
             generatedCoverImageProxyUrl: string | null;
             googleDriveUrl: string | null;
             driveFolderId: string | null;
-            country: import(".prisma/client").$Enums.Country;
             syncStatus: import(".prisma/client").$Enums.SyncStatus;
             lastSyncedAt: Date | null;
             syncErrorMessage: string | null;
             driveChangeToken: string | null;
-            createdAt: Date;
-            updatedAt: Date;
             clientId: string | null;
         })[];
         pagination: {
@@ -138,35 +138,38 @@ export declare class EventsService {
         photos: {
             fileSize: string;
             id: string;
-            googleDriveUrl: string | null;
             createdAt: Date;
             updatedAt: Date;
-            eventId: string;
+            status: import(".prisma/client").$Enums.UploadStatus;
             url: string;
+            mimeType: string | null;
+            googleDriveUrl: string | null;
+            eventId: string;
             driveFileId: string | null;
             caption: string | null;
-            status: import(".prisma/client").$Enums.UploadStatus;
-            mimeType: string | null;
             width: number | null;
             height: number | null;
             uploadedById: string | null;
         }[];
         service: {
             id: string;
-            slug: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
             title: string;
+            slug: string;
             subtitle: string | null;
+            description: string;
             imageUrl: string | null;
             isVisible: boolean;
         };
         id: string;
         name: string;
+        country: import(".prisma/client").$Enums.Country;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
-        serviceId: string;
         description: string | null;
+        serviceId: string;
         date: Date | null;
         location: string | null;
         coverImageUrl: string | null;
@@ -174,48 +177,48 @@ export declare class EventsService {
         generatedCoverImageProxyUrl: string | null;
         googleDriveUrl: string | null;
         driveFolderId: string | null;
-        country: import(".prisma/client").$Enums.Country;
         syncStatus: import(".prisma/client").$Enums.SyncStatus;
         lastSyncedAt: Date | null;
         syncErrorMessage: string | null;
         driveChangeToken: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         clientId: string | null;
     }>;
     findBySlug(slug: string, country?: Country): Promise<{
         photos: {
             fileSize: string;
             id: string;
-            googleDriveUrl: string | null;
             createdAt: Date;
             updatedAt: Date;
-            eventId: string;
+            status: import(".prisma/client").$Enums.UploadStatus;
             url: string;
+            mimeType: string | null;
+            googleDriveUrl: string | null;
+            eventId: string;
             driveFileId: string | null;
             caption: string | null;
-            status: import(".prisma/client").$Enums.UploadStatus;
-            mimeType: string | null;
             width: number | null;
             height: number | null;
             uploadedById: string | null;
         }[];
         service: {
             id: string;
-            slug: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
             title: string;
+            slug: string;
             subtitle: string | null;
+            description: string;
             imageUrl: string | null;
             isVisible: boolean;
         };
         id: string;
         name: string;
+        country: import(".prisma/client").$Enums.Country;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
-        serviceId: string;
         description: string | null;
+        serviceId: string;
         date: Date | null;
         location: string | null;
         coverImageUrl: string | null;
@@ -223,21 +226,21 @@ export declare class EventsService {
         generatedCoverImageProxyUrl: string | null;
         googleDriveUrl: string | null;
         driveFolderId: string | null;
-        country: import(".prisma/client").$Enums.Country;
         syncStatus: import(".prisma/client").$Enums.SyncStatus;
         lastSyncedAt: Date | null;
         syncErrorMessage: string | null;
         driveChangeToken: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         clientId: string | null;
     }>;
     update(id: string, data: any, country?: Country): Promise<{
         id: string;
         name: string;
+        country: import(".prisma/client").$Enums.Country;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
-        serviceId: string;
         description: string | null;
+        serviceId: string;
         date: Date | null;
         location: string | null;
         coverImageUrl: string | null;
@@ -245,21 +248,21 @@ export declare class EventsService {
         generatedCoverImageProxyUrl: string | null;
         googleDriveUrl: string | null;
         driveFolderId: string | null;
-        country: import(".prisma/client").$Enums.Country;
         syncStatus: import(".prisma/client").$Enums.SyncStatus;
         lastSyncedAt: Date | null;
         syncErrorMessage: string | null;
         driveChangeToken: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         clientId: string | null;
     }>;
     remove(id: string, country?: Country): Promise<{
         id: string;
         name: string;
+        country: import(".prisma/client").$Enums.Country;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
-        serviceId: string;
         description: string | null;
+        serviceId: string;
         date: Date | null;
         location: string | null;
         coverImageUrl: string | null;
@@ -267,13 +270,10 @@ export declare class EventsService {
         generatedCoverImageProxyUrl: string | null;
         googleDriveUrl: string | null;
         driveFolderId: string | null;
-        country: import(".prisma/client").$Enums.Country;
         syncStatus: import(".prisma/client").$Enums.SyncStatus;
         lastSyncedAt: Date | null;
         syncErrorMessage: string | null;
         driveChangeToken: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         clientId: string | null;
     }>;
     addPhotos(eventId: string, photos: {
@@ -285,15 +285,15 @@ export declare class EventsService {
         data: {
             fileSize: string;
             id: string;
-            googleDriveUrl: string | null;
             createdAt: Date;
             updatedAt: Date;
-            eventId: string;
+            status: import(".prisma/client").$Enums.UploadStatus;
             url: string;
+            mimeType: string | null;
+            googleDriveUrl: string | null;
+            eventId: string;
             driveFileId: string | null;
             caption: string | null;
-            status: import(".prisma/client").$Enums.UploadStatus;
-            mimeType: string | null;
             width: number | null;
             height: number | null;
             uploadedById: string | null;
@@ -441,12 +441,12 @@ export declare class EventsService {
             name: string;
             service: {
                 id: string;
-                slug: string;
-                description: string;
                 createdAt: Date;
                 updatedAt: Date;
                 title: string;
+                slug: string;
                 subtitle: string | null;
+                description: string;
                 imageUrl: string | null;
                 isVisible: boolean;
             };
@@ -480,12 +480,12 @@ export declare class EventsService {
         };
         client: {
             id: string;
+            email: string | null;
             name: string;
+            phone: string | null;
             country: import(".prisma/client").$Enums.Country;
             createdAt: Date;
             updatedAt: Date;
-            email: string | null;
-            phone: string | null;
             avatarUrl: string | null;
         };
         approvedAt: Date;
@@ -502,12 +502,12 @@ export declare class EventsService {
         };
         client: {
             id: string;
+            email: string | null;
             name: string;
+            phone: string | null;
             country: import(".prisma/client").$Enums.Country;
             createdAt: Date;
             updatedAt: Date;
-            email: string | null;
-            phone: string | null;
             avatarUrl: string | null;
         };
         approvedAt: Date;
@@ -524,12 +524,12 @@ export declare class EventsService {
         };
         client: {
             id: string;
+            email: string | null;
             name: string;
+            phone: string | null;
             country: import(".prisma/client").$Enums.Country;
             createdAt: Date;
             updatedAt: Date;
-            email: string | null;
-            phone: string | null;
             avatarUrl: string | null;
         };
         approvedAt: Date;
@@ -552,8 +552,8 @@ export declare class EventsService {
         size: string;
     }>;
     updateGeneratedCoverImage(eventId: string): Promise<{
-        googleDriveUrl: string;
         url: string;
+        googleDriveUrl: string;
     }>;
     regenerateCoverImage(eventId: string, country?: Country): Promise<{
         eventId: string;
