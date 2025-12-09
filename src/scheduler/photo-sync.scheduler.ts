@@ -67,7 +67,7 @@ export class PhotoSyncScheduler {
           this.logger.debug(`Syncing event: ${event.name} (${event.id})`);
 
           // Use incremental sync for better performance
-          await this.eventsService.syncPhotosIncremental(
+          await this.eventsService.syncPhotosFromGoogleDrive(
             event.id,
             event.country
           );
