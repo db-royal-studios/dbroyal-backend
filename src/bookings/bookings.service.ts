@@ -43,6 +43,8 @@ export class BookingsService {
       ...rest,
       price: pricing?.price,
       currency: pricing?.currency,
+      paymentStatus: "UNPAID" as any,
+      amountPaid: 0,
     };
 
     return this.prisma.$transaction(async (tx) => {

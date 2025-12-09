@@ -56,6 +56,24 @@ enum SyncStatus {
   SYNC_REQUIRED
 }
 
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  REFUNDED
+  PARTIALLY_REFUNDED
+  FAILED
+}
+
+enum PaymentMethod {
+  CARD
+  BANK_TRANSFER
+  CASH
+  STRIPE
+  PAYSTACK
+}
+
 model Service {
   id          String   @id @default(cuid())
   title       String
@@ -258,6 +276,13 @@ model Booking {
   notes          String?         // Additional booking notes or requirements
   price          Decimal?        @db.Decimal(10, 2) // Booked price (captured at booking time)
   currency       String?         // Currency at booking time
+  
+  // Payment fields
+  paymentStatus  PaymentStatus   @default(UNPAID)
+  amountPaid     Decimal         @default(0) @db.Decimal(10, 2)
+  depositAmount  Decimal?        @db.Decimal(10, 2) // Required deposit (if any)
+  depositPaid    Boolean         @default(false)
+  
   approvalStatus ApprovalStatus  @default(PENDING)
   status         BookingStatus   @default(SCHEDULED)
   country        Country         @default(NG)
@@ -265,12 +290,14 @@ model Booking {
   updatedAt      DateTime        @updatedAt
 
   assigned BookingAssignment[]
+  payments Payment[]
 
   @@index([clientId])
   @@index([packageId])
   @@index([eventId])
   @@index([dateTime])
   @@index([country])
+  @@index([paymentStatus])
 }
 
 model BookingAssignment {
@@ -283,4 +310,40 @@ model BookingAssignment {
 
   @@id([bookingId, userId])
   @@index([userId])
+}
+
+model Payment {
+  id                String         @id @default(cuid())
+  bookingId         String
+  booking           Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  amount            Decimal        @db.Decimal(10, 2)
+  currency          String
+  method            PaymentMethod
+  status            PaymentStatus  @default(PENDING)
+  
+  // Stripe-specific fields (for UK payments)
+  stripePaymentIntentId String?    @unique
+  stripeChargeId        String?
+  
+  // Bank transfer fields (for Nigeria payments)
+  paymentProofUrl   String?        // Screenshot of bank transfer
+  bankName          String?        // Bank used for transfer
+  accountNumber     String?        // Last 4 digits or full account
+  transferReference String?        // Customer's transfer reference
+  
+  // Admin verification (for manual payments)
+  verifiedBy        String?        // Admin user ID who verified
+  verifiedAt        DateTime?      // When payment was verified
+  
+  // Metadata
+  paidBy            String?        // Name of person who paid
+  notes             String?        // Additional notes
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  @@index([bookingId])
+  @@index([status])
+  @@index([stripePaymentIntentId])
 }
