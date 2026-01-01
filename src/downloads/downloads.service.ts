@@ -87,11 +87,19 @@ export class DownloadsService {
     const downloadUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/download/${updatedSelection.token}`;
 
     // Send email notification
-    if (updatedSelection.event.client?.email) {
+    if (
+      updatedSelection.event.client?.email ||
+      updatedSelection.customerEmail
+    ) {
       await this.emailService
         .sendDownloadReady({
-          to: updatedSelection.event.client.email,
-          clientName: updatedSelection.event.client.name,
+          to:
+            updatedSelection.event.client.email ||
+            updatedSelection.customerEmail,
+          clientName:
+            updatedSelection.event.client.name ||
+            updatedSelection.customerName ||
+            "Valued Customer",
           eventName: updatedSelection.event.name,
           downloadUrl,
           expiresAt: updatedSelection.expiresAt,
