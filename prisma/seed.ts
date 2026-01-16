@@ -19,6 +19,9 @@ async function main() {
   // Seed Services first
   await seedServices();
 
+  // Seed Add-ons
+  await seedAddOns();
+
   // Migrate existing events (if any)
   await migrateExistingEvents();
 
@@ -463,6 +466,203 @@ async function seedServices() {
       }
     }
   }
+}
+
+// GBP to NGN conversion rate
+const GBP_TO_NGN_RATE = 1900;
+
+async function seedAddOns() {
+  console.log("\n🎁 Seeding add-ons...");
+
+  // Add-ons organized by service slug
+  const addOnsByService: Record<
+    string,
+    Array<{
+      name: string;
+      slug: string;
+      description?: string;
+      sortOrder: number;
+      priceGBP: number; // UK price in GBP
+    }>
+  > = {
+    // Photoshoot Service add-ons
+    "professional-photoshoot": [
+      {
+        name: "Extra Outfit",
+        slug: "extra-outfit",
+        description: "Additional outfit change during the photoshoot session",
+        sortOrder: 0,
+        priceGBP: 50,
+      },
+      {
+        name: "Extra Hour",
+        slug: "extra-hour",
+        description: "Extend your photoshoot session by one hour",
+        sortOrder: 1,
+        priceGBP: 60,
+      },
+      {
+        name: "Set Design",
+        slug: "set-design",
+        description: "Custom set design and styling for your shoot",
+        sortOrder: 2,
+        priceGBP: 250,
+      },
+      {
+        name: "Framed Photo",
+        slug: "framed-photo",
+        description: "Premium framed print of your favourite photo",
+        sortOrder: 3,
+        priceGBP: 150,
+      },
+    ],
+
+    // Event coverage add-ons (Wedding, Birthday, Funeral)
+    "wedding-photography": [
+      {
+        name: "Extra Photographer",
+        slug: "extra-photographer",
+        description: "Additional photographer for better coverage",
+        sortOrder: 0,
+        priceGBP: 300,
+      },
+      {
+        name: "Photo Album",
+        slug: "photo-album",
+        description: "Premium printed photo album (30 pages)",
+        sortOrder: 1,
+        priceGBP: 200,
+      },
+    ],
+    "birthday-shoots": [
+      {
+        name: "Extra Photographer",
+        slug: "extra-photographer",
+        description: "Additional photographer for better coverage",
+        sortOrder: 0,
+        priceGBP: 300,
+      },
+      {
+        name: "Photo Album",
+        slug: "photo-album",
+        description: "Premium printed photo album (30 pages)",
+        sortOrder: 1,
+        priceGBP: 200,
+      },
+    ],
+    "burial-memorial-events": [
+      {
+        name: "Extra Photographer",
+        slug: "extra-photographer",
+        description: "Additional photographer for better coverage",
+        sortOrder: 0,
+        priceGBP: 300,
+      },
+      {
+        name: "Photo Album",
+        slug: "photo-album",
+        description: "Premium printed photo album (30 pages)",
+        sortOrder: 1,
+        priceGBP: 200,
+      },
+    ],
+
+    // Corporate events have no add-ons (as specified)
+  };
+
+  for (const [serviceSlug, addOns] of Object.entries(addOnsByService)) {
+    // Find the service
+    const service = await prisma.service.findUnique({
+      where: { slug: serviceSlug },
+    });
+
+    if (!service) {
+      console.log(`  ⚠️  Service "${serviceSlug}" not found, skipping add-ons`);
+      continue;
+    }
+
+    console.log(`  📦 Adding add-ons for ${service.title}...`);
+
+    for (const addOnData of addOns) {
+      const { priceGBP, ...addOnInfo } = addOnData;
+
+      // Check if add-on already exists
+      const existingAddOn = await prisma.addOn.findUnique({
+        where: {
+          serviceId_slug: {
+            serviceId: service.id,
+            slug: addOnInfo.slug,
+          },
+        },
+        include: { pricing: true },
+      });
+
+      if (existingAddOn) {
+        console.log(`    ↻ Updating add-on "${addOnInfo.name}"`);
+
+        // Update add-on details
+        await prisma.addOn.update({
+          where: { id: existingAddOn.id },
+          data: {
+            name: addOnInfo.name,
+            description: addOnInfo.description,
+            sortOrder: addOnInfo.sortOrder,
+          },
+        });
+
+        // Update pricing
+        const pricingData = [
+          { country: Country.UK, price: priceGBP, currency: "GBP" },
+          {
+            country: Country.NG,
+            price: priceGBP * GBP_TO_NGN_RATE,
+            currency: "NGN",
+          },
+        ];
+
+        for (const pricing of pricingData) {
+          const existingPricing = existingAddOn.pricing.find(
+            (p) => p.country === pricing.country
+          );
+
+          if (existingPricing) {
+            await prisma.addOnPricing.update({
+              where: { id: existingPricing.id },
+              data: { price: pricing.price, currency: pricing.currency },
+            });
+          } else {
+            await prisma.addOnPricing.create({
+              data: {
+                addOnId: existingAddOn.id,
+                ...pricing,
+              },
+            });
+          }
+        }
+      } else {
+        // Create new add-on with pricing
+        await prisma.addOn.create({
+          data: {
+            ...addOnInfo,
+            serviceId: service.id,
+            pricing: {
+              create: [
+                { country: Country.UK, price: priceGBP, currency: "GBP" },
+                {
+                  country: Country.NG,
+                  price: priceGBP * GBP_TO_NGN_RATE,
+                  currency: "NGN",
+                },
+              ],
+            },
+          },
+        });
+        console.log(`    ✓ Created add-on: ${addOnInfo.name}`);
+      }
+    }
+  }
+
+  console.log("  ✓ Add-ons seeding complete");
 }
 
 async function migrateExistingEvents() {

@@ -273,6 +273,7 @@ export class DownloadsService {
         event: {
           include: {
             client: true,
+            service: true,
           },
         },
       },
@@ -297,6 +298,7 @@ export class DownloadsService {
         event: {
           include: {
             client: true,
+            service: true,
           },
         },
       },
@@ -313,9 +315,13 @@ export class DownloadsService {
         .sendBookingPendingApproval({
           to: recipientEmail,
           clientName: recipientName || "Valued Customer",
-          eventName: updatedSelection.event.name,
+          serviceName:
+            updatedSelection.event.service?.title ||
+            updatedSelection.event.name,
           eventDate: "Your download request",
           packageName: `${updatedSelection.photoCount || 0} photos`,
+          amount: 0,
+          currency: "GBP",
         })
         .catch((error) => {
           console.error(
