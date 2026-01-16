@@ -15,6 +15,7 @@ import { SchedulerModule } from "./scheduler/scheduler.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { EmailModule } from "./email/email.module";
 import { DownloadsModule } from "./downloads/downloads.module";
+import { AddOnsModule } from "./addons/addons.module";
 import { CountryGuard } from "./common/guards/country.guard";
 import { CountryContextInterceptor } from "./common/interceptors/country-context.interceptor";
 
@@ -33,6 +34,7 @@ import { CountryContextInterceptor } from "./common/interceptors/country-context
     PaymentsModule,
     EmailModule,
     DownloadsModule,
+    AddOnsModule,
   ],
   controllers: [AppController],
   providers: [

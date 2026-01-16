@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
 import { ApprovalStatus, BookingStatus, Country } from "@prisma/client";
+import { BookingAddOnDto } from "./dto";
 
 @Injectable()
 export class BookingsService {
@@ -22,8 +23,9 @@ export class BookingsService {
     status?: BookingStatus;
     country?: Country;
     assignedUserIds?: string[];
+    addOns?: BookingAddOnDto[];
   }) {
-    const { assignedUserIds, ...rest } = data;
+    const { assignedUserIds, addOns, ...rest } = data;
     if (typeof rest.dateTime === "string")
       rest.dateTime = new Date(rest.dateTime);
 
@@ -38,7 +40,70 @@ export class BookingsService {
     });
 
     if (!packageWithPricing) {
-      throw new Error("Package not found");
+      throw new BadRequestException("Package not found");
+    }
+
+    // Validate and fetch add-ons pricing if provided
+    let addOnsWithPricing: Array<{
+      addOnId: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+      currency: string;
+    }> = [];
+
+    if (addOns?.length) {
+      const addOnIds = addOns.map((a) => a.addOnId);
+      const bookingCountry = data.country || Country.NG;
+
+      // Validate add-ons belong to the same service as the package
+      const addOnsData = await this.prisma.addOn.findMany({
+        where: { id: { in: addOnIds } },
+        include: {
+          pricing: { where: { country: bookingCountry } },
+        },
+      });
+
+      // Check all add-ons exist and belong to the same service
+      const invalidAddOns = addOnsData.filter(
+        (addOn) => addOn.serviceId !== packageWithPricing.serviceId
+      );
+      if (invalidAddOns.length > 0) {
+        throw new BadRequestException(
+          `Add-ons must belong to the same service as the package: ${invalidAddOns.map((a) => a.name).join(", ")}`
+        );
+      }
+
+      const notFoundAddOnIds = addOnIds.filter(
+        (id) => !addOnsData.find((a) => a.id === id)
+      );
+      if (notFoundAddOnIds.length > 0) {
+        throw new BadRequestException(
+          `Add-ons not found: ${notFoundAddOnIds.join(", ")}`
+        );
+      }
+
+      // Prepare add-ons with pricing
+      addOnsWithPricing = addOns.map((addOn) => {
+        const addOnData = addOnsData.find((a) => a.id === addOn.addOnId)!;
+        const pricing = addOnData.pricing[0];
+        if (!pricing) {
+          throw new BadRequestException(
+            `No pricing found for add-on "${addOnData.name}" in ${bookingCountry}`
+          );
+        }
+
+        const quantity = addOn.quantity || 1;
+        const unitPrice = Number(pricing.price);
+
+        return {
+          addOnId: addOn.addOnId,
+          quantity,
+          unitPrice,
+          totalPrice: unitPrice * quantity,
+          currency: pricing.currency,
+        };
+      });
     }
 
     // Capture price at booking time
@@ -70,6 +135,20 @@ export class BookingsService {
           });
         }
 
+        // Create booking add-ons if provided
+        if (addOnsWithPricing.length > 0) {
+          await tx.bookingAddOn.createMany({
+            data: addOnsWithPricing.map((addOn) => ({
+              bookingId: newBooking.id,
+              addOnId: addOn.addOnId,
+              quantity: addOn.quantity,
+              unitPrice: addOn.unitPrice,
+              totalPrice: addOn.totalPrice,
+              currency: addOn.currency,
+            })),
+          });
+        }
+
         // Return booking with all relations in same transaction
         return tx.booking.findUnique({
           where: { id: newBooking.id },
@@ -77,6 +156,11 @@ export class BookingsService {
             assigned: true,
             client: true,
             event: true,
+            addOns: {
+              include: {
+                addOn: true,
+              },
+            },
             package: {
               include: {
                 service: true,
@@ -97,16 +181,37 @@ export class BookingsService {
 
     // Send email based on country (non-blocking, outside transaction)
     if (booking.client?.email) {
+      // Prepare add-ons for email
+      const emailAddOns = booking.addOns?.length
+        ? booking.addOns.map((ba: any) => ({
+            name: ba.addOn.name,
+            quantity: ba.quantity,
+            unitPrice: Number(ba.unitPrice),
+            totalPrice: Number(ba.totalPrice),
+          }))
+        : undefined;
+
+      const bookingWithTotals = this.calculateBookingTotals(booking);
+
+      // Get service name from package's service
+      const serviceName =
+        booking.package?.service?.title ||
+        booking.event?.name ||
+        booking.title ||
+        "Your Service";
+
       // UK bookings get automatic confirmation, Nigeria bookings need approval
       if (booking.country === Country.UK) {
         this.emailService
           .sendBookingConfirmation({
             to: booking.client.email,
             clientName: booking.client.name,
-            eventName: booking.event?.name || booking.title || "Your Event",
+            serviceName,
             eventDate: booking.dateTime.toLocaleDateString(),
             packageName: booking.package.name,
             amount: Number(booking.price || 0),
+            addOns: emailAddOns,
+            totalAmount: bookingWithTotals.pricing.totalPrice,
             currency: booking.currency,
             country: booking.country,
           })
@@ -118,9 +223,12 @@ export class BookingsService {
           .sendBookingPendingApproval({
             to: booking.client.email,
             clientName: booking.client.name,
-            eventName: booking.event?.name || booking.title || "Your Event",
+            serviceName,
             eventDate: booking.dateTime.toLocaleDateString(),
             packageName: booking.package.name,
+            amount: Number(booking.price || 0),
+            addOns: emailAddOns,
+            totalAmount: bookingWithTotals.pricing.totalPrice,
             currency: booking.currency,
             country: booking.country,
           })
@@ -133,7 +241,7 @@ export class BookingsService {
       }
     }
 
-    return booking;
+    return this.calculateBookingTotals(booking);
   }
 
   async findAll(
@@ -171,6 +279,11 @@ export class BookingsService {
           assigned: true,
           client: true,
           event: true,
+          addOns: {
+            include: {
+              addOn: true,
+            },
+          },
           package: {
             include: {
               service: true,
@@ -185,8 +298,13 @@ export class BookingsService {
       this.prisma.booking.count({ where }),
     ]);
 
+    // Calculate totals for each booking
+    const bookingsWithTotals = bookings.map((booking) =>
+      this.calculateBookingTotals(booking)
+    );
+
     return {
-      data: bookings,
+      data: bookingsWithTotals,
       meta: {
         total,
         page,
@@ -196,13 +314,18 @@ export class BookingsService {
     };
   }
 
-  findOne(id: string, country?: Country) {
-    return this.prisma.booking.findUnique({
+  async findOne(id: string, country?: Country) {
+    const booking = await this.prisma.booking.findUnique({
       where: country ? { id, country } : { id },
       include: {
         assigned: true,
         client: true,
         event: true,
+        addOns: {
+          include: {
+            addOn: true,
+          },
+        },
         package: {
           include: {
             service: true,
@@ -214,6 +337,10 @@ export class BookingsService {
         },
       },
     });
+
+    if (!booking) return null;
+
+    return this.calculateBookingTotals(booking);
   }
 
   async update(id: string, data: any, country?: Country) {
@@ -236,7 +363,16 @@ export class BookingsService {
       include: {
         client: true,
         event: true,
-        package: true,
+        package: {
+          include: {
+            service: true,
+          },
+        },
+        addOns: {
+          include: {
+            addOn: true,
+          },
+        },
       },
     });
 
@@ -245,13 +381,36 @@ export class BookingsService {
       data.approvalStatus === ApprovalStatus.APPROVED &&
       updatedBooking.client?.email
     ) {
+      // Get service name from package's service
+      const serviceName =
+        updatedBooking.package?.service?.title ||
+        updatedBooking.event?.name ||
+        updatedBooking.title ||
+        "Your Service";
+
+      // Prepare add-ons for email
+      const emailAddOns = updatedBooking.addOns?.length
+        ? updatedBooking.addOns.map((ba: any) => ({
+            name: ba.addOn.name,
+            quantity: ba.quantity,
+            unitPrice: Number(ba.unitPrice),
+            totalPrice: Number(ba.totalPrice),
+          }))
+        : undefined;
+
+      // Calculate totals
+      const bookingWithTotals = this.calculateBookingTotals(updatedBooking);
+
       this.emailService
         .sendBookingAccepted({
           to: updatedBooking.client.email,
           clientName: updatedBooking.client.name,
-          eventName:
-            updatedBooking.event?.name || updatedBooking.title || "Your Event",
+          serviceName,
           eventDate: updatedBooking.dateTime.toLocaleDateString(),
+          packageName: updatedBooking.package?.name || "Package",
+          amount: Number(updatedBooking.price || 0),
+          addOns: emailAddOns,
+          totalAmount: bookingWithTotals.pricing.totalPrice,
           additionalInfo: data.notes || updatedBooking.notes,
           currency: updatedBooking.currency,
           country: updatedBooking.country,
@@ -334,6 +493,28 @@ export class BookingsService {
       totals: {
         total: totalBookings,
         upcoming: upcomingBookings,
+      },
+    };
+  }
+
+  /**
+   * Calculate total price including package price and all add-ons
+   */
+  private calculateBookingTotals(booking: any) {
+    const packagePrice = Number(booking.price || 0);
+    const addOnsTotal = (booking.addOns || []).reduce(
+      (sum: number, ba: any) => sum + Number(ba.totalPrice || 0),
+      0
+    );
+    const totalPrice = packagePrice + addOnsTotal;
+
+    return {
+      ...booking,
+      pricing: {
+        packagePrice,
+        addOnsTotal,
+        totalPrice,
+        currency: booking.currency,
       },
     };
   }

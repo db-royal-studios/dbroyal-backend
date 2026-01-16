@@ -5,8 +5,24 @@ import {
   IsOptional,
   IsDateString,
   IsArray,
+  ValidateNested,
+  IsNumber,
+  Min,
 } from "class-validator";
+import { Type } from "class-transformer";
 import { ApprovalStatus, BookingStatus, Country } from "@prisma/client";
+
+export class BookingAddOnDto {
+  @ApiProperty({ description: "Add-on ID" })
+  @IsString()
+  addOnId: string;
+
+  @ApiPropertyOptional({ description: "Quantity of this add-on", default: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  quantity?: number;
+}
 
 export class CreateBookingDto {
   @ApiPropertyOptional({ description: "Booking title" })
@@ -83,4 +99,14 @@ export class CreateBookingDto {
   @IsOptional()
   @IsEnum(Country, { message: "Country must be either NG or UK" })
   country?: Country;
+
+  @ApiPropertyOptional({
+    description: "Array of add-ons to include with this booking",
+    type: [BookingAddOnDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingAddOnDto)
+  addOns?: BookingAddOnDto[];
 }

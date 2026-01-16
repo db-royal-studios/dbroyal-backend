@@ -552,7 +552,11 @@ export class PaymentsService {
         where: { id: bookingId },
         include: {
           client: true,
-          package: true,
+          package: {
+            include: {
+              service: true,
+            },
+          },
         },
       });
 
@@ -571,7 +575,8 @@ export class PaymentsService {
       await this.emailService.sendBookingAccepted({
         to: booking.client.email,
         clientName: booking.client.name,
-        eventName: booking.title || booking.package.name,
+        serviceName:
+          booking.package.service?.title || booking.title || "Your Service",
         eventDate: booking.dateTime
           ? new Date(booking.dateTime).toLocaleDateString("en-US", {
               weekday: "long",
@@ -580,6 +585,9 @@ export class PaymentsService {
               day: "numeric",
             })
           : "To be confirmed",
+        packageName: booking.package.name,
+        amount: Number(booking.price || 0),
+        currency: booking.currency || "GBP",
         additionalInfo:
           "Your payment has been confirmed and your booking is now active. We look forward to capturing your special moments!",
       });

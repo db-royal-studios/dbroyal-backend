@@ -5,7 +5,28 @@ import {
   IsNumber,
   IsOptional,
   IsDateString,
+  IsArray,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
+
+export class BookingAddOnEmailDto {
+  @ApiProperty({ description: "Add-on name" })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: "Quantity" })
+  @IsNumber()
+  quantity: number;
+
+  @ApiProperty({ description: "Unit price" })
+  @IsNumber()
+  unitPrice: number;
+
+  @ApiProperty({ description: "Total price for this add-on" })
+  @IsNumber()
+  totalPrice: number;
+}
 
 export class BookingConfirmationEmailDto {
   @ApiProperty({
@@ -23,11 +44,11 @@ export class BookingConfirmationEmailDto {
   clientName: string;
 
   @ApiProperty({
-    description: "Event name",
+    description: "Service name (e.g., Wedding Photography)",
     example: "Wedding Photography",
   })
   @IsString()
-  eventName: string;
+  serviceName: string;
 
   @ApiProperty({
     description: "Event date",
@@ -44,11 +65,31 @@ export class BookingConfirmationEmailDto {
   packageName: string;
 
   @ApiProperty({
-    description: "Booking amount",
+    description: "Package price (base price)",
     example: 50000,
   })
   @IsNumber()
   amount: number;
+
+  @ApiProperty({
+    description: "Add-ons included in the booking",
+    type: [BookingAddOnEmailDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingAddOnEmailDto)
+  addOns?: BookingAddOnEmailDto[];
+
+  @ApiProperty({
+    description: "Total price including add-ons",
+    example: 55000,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  totalAmount?: number;
 
   @ApiProperty({
     description: "Currency code (ISO 4217)",
@@ -85,11 +126,11 @@ export class BookingPendingApprovalEmailDto {
   clientName: string;
 
   @ApiProperty({
-    description: "Event name",
+    description: "Service name (e.g., Wedding Photography)",
     example: "Wedding Photography",
   })
   @IsString()
-  eventName: string;
+  serviceName: string;
 
   @ApiProperty({
     description: "Event date",
@@ -104,6 +145,35 @@ export class BookingPendingApprovalEmailDto {
   })
   @IsString()
   packageName: string;
+
+  @ApiProperty({
+    description: "Package price (base price)",
+    example: 50000,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  amount?: number;
+
+  @ApiProperty({
+    description: "Add-ons included in the booking",
+    type: [BookingAddOnEmailDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingAddOnEmailDto)
+  addOns?: BookingAddOnEmailDto[];
+
+  @ApiProperty({
+    description: "Total price including add-ons",
+    example: 55000,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  totalAmount?: number;
 
   @ApiProperty({
     description: "Currency code (ISO 4217)",
@@ -140,11 +210,11 @@ export class BookingAcceptedEmailDto {
   clientName: string;
 
   @ApiProperty({
-    description: "Event name",
+    description: "Service name (e.g., Wedding Photography)",
     example: "Wedding Photography",
   })
   @IsString()
-  eventName: string;
+  serviceName: string;
 
   @ApiProperty({
     description: "Event date",
@@ -152,6 +222,42 @@ export class BookingAcceptedEmailDto {
   })
   @IsString()
   eventDate: string;
+
+  @ApiProperty({
+    description: "Package name",
+    example: "Premium Wedding Package",
+  })
+  @IsString()
+  packageName: string;
+
+  @ApiProperty({
+    description: "Package price (base price)",
+    example: 50000,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  amount?: number;
+
+  @ApiProperty({
+    description: "Add-ons included in the booking",
+    type: [BookingAddOnEmailDto],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingAddOnEmailDto)
+  addOns?: BookingAddOnEmailDto[];
+
+  @ApiProperty({
+    description: "Total price including add-ons",
+    example: 55000,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  totalAmount?: number;
 
   @ApiProperty({
     description: "Additional information",

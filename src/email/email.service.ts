@@ -66,21 +66,25 @@ export class EmailService {
       const {
         to,
         clientName,
-        eventName,
+        serviceName,
         eventDate,
         packageName,
         amount,
+        addOns,
+        totalAmount,
         currency,
         country,
       } = dto;
 
-      const subject = `Booking Confirmation - ${eventName}`;
+      const subject = `Booking Confirmation - ${serviceName}`;
       const html = this.getBookingConfirmationTemplate({
         clientName,
-        eventName,
+        serviceName,
         eventDate,
         packageName,
         amount,
+        addOns,
+        totalAmount,
         currency: currency || this.getCurrencyFromCountry(country),
       });
 
@@ -107,14 +111,29 @@ export class EmailService {
     dto: BookingPendingApprovalEmailDto
   ): Promise<void> {
     try {
-      const { to, clientName, eventName, eventDate, packageName } = dto;
-
-      const subject = `Booking Received - ${eventName}`;
-      const html = this.getBookingPendingApprovalTemplate({
+      const {
+        to,
         clientName,
-        eventName,
+        serviceName,
         eventDate,
         packageName,
+        amount,
+        addOns,
+        totalAmount,
+        currency,
+        country,
+      } = dto;
+
+      const subject = `Booking Received - ${serviceName}`;
+      const html = this.getBookingPendingApprovalTemplate({
+        clientName,
+        serviceName,
+        eventDate,
+        packageName,
+        amount,
+        addOns,
+        totalAmount,
+        currency: currency || this.getCurrencyFromCountry(country),
       });
 
       await this.transporter.sendMail({
@@ -138,14 +157,31 @@ export class EmailService {
    */
   async sendBookingAccepted(dto: BookingAcceptedEmailDto): Promise<void> {
     try {
-      const { to, clientName, eventName, eventDate, additionalInfo } = dto;
+      const {
+        to,
+        clientName,
+        serviceName,
+        eventDate,
+        packageName,
+        amount,
+        addOns,
+        totalAmount,
+        additionalInfo,
+        currency,
+        country,
+      } = dto;
 
-      const subject = `Booking Accepted - ${eventName}`;
+      const subject = `Booking Accepted - ${serviceName}`;
       const html = this.getBookingAcceptedTemplate({
         clientName,
-        eventName,
+        serviceName,
         eventDate,
+        packageName,
+        amount,
+        addOns,
+        totalAmount,
         additionalInfo,
+        currency: currency || this.getCurrencyFromCountry(country),
       });
 
       await this.transporter.sendMail({
@@ -257,12 +293,44 @@ export class EmailService {
    */
   private getBookingConfirmationTemplate(data: {
     clientName: string;
-    eventName: string;
+    serviceName: string;
     eventDate: string;
     packageName: string;
     amount: number;
     currency: string;
+    addOns?: Array<{
+      name: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }>;
+    totalAmount?: number;
   }): string {
+    const addOnsHtml = data.addOns?.length
+      ? `
+        <div style="margin-top: 15px;">
+          <h4 style="margin-bottom: 10px;">Add-ons:</h4>
+          <table style="width: 100%; border-collapse: collapse;">
+            ${data.addOns
+              .map(
+                (addOn) => `
+              <tr>
+                <td style="padding: 5px 0;">${addOn.name} ${addOn.quantity > 1 ? `(x${addOn.quantity})` : ""}</td>
+                <td style="padding: 5px 0; text-align: right;">${this.formatCurrency(addOn.totalPrice, data.currency)}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </table>
+        </div>
+      `
+      : "";
+
+    const totalHtml =
+      data.totalAmount && data.totalAmount !== data.amount
+        ? `<p style="margin-top: 15px; font-size: 18px;"><strong>Total:</strong> ${this.formatCurrency(data.totalAmount, data.currency)}</p>`
+        : "";
+
     return `
       <!DOCTYPE html>
       <html>
@@ -288,10 +356,11 @@ export class EmailService {
               
               <div class="details">
                 <h3>Booking Details:</h3>
-                <p><strong>Event:</strong> ${data.eventName}</p>
+                <p><strong>Service:</strong> ${data.serviceName}</p>
                 <p><strong>Date:</strong> ${data.eventDate}</p>
-                <p><strong>Package:</strong> ${data.packageName}</p>
-                <p><strong>Amount:</strong> ${this.formatCurrency(data.amount, data.currency)}</p>
+                <p><strong>Package:</strong> ${data.packageName} - ${this.formatCurrency(data.amount, data.currency)}</p>
+                ${addOnsHtml}
+                ${totalHtml}
               </div>
               
               <p>We're excited to capture your special moments! Our team will be in touch with you shortly to discuss the details.</p>
@@ -311,10 +380,44 @@ export class EmailService {
    */
   private getBookingPendingApprovalTemplate(data: {
     clientName: string;
-    eventName: string;
+    serviceName: string;
     eventDate: string;
     packageName: string;
+    amount: number;
+    currency: string;
+    addOns?: Array<{
+      name: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }>;
+    totalAmount?: number;
   }): string {
+    const addOnsHtml = data.addOns?.length
+      ? `
+        <div style="margin-top: 15px;">
+          <h4 style="margin-bottom: 10px;">Add-ons:</h4>
+          <table style="width: 100%; border-collapse: collapse;">
+            ${data.addOns
+              .map(
+                (addOn) => `
+              <tr>
+                <td style="padding: 5px 0;">${addOn.name} ${addOn.quantity > 1 ? `(x${addOn.quantity})` : ""}</td>
+                <td style="padding: 5px 0; text-align: right;">${this.formatCurrency(addOn.totalPrice, data.currency)}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </table>
+        </div>
+      `
+      : "";
+
+    const totalHtml =
+      data.totalAmount && data.totalAmount !== data.amount
+        ? `<p style="margin-top: 15px; font-size: 18px;"><strong>Total:</strong> ${this.formatCurrency(data.totalAmount, data.currency)}</p>`
+        : "";
+
     return `
       <!DOCTYPE html>
       <html>
@@ -340,9 +443,11 @@ export class EmailService {
               
               <div class="details">
                 <h3>Booking Details:</h3>
-                <p><strong>Event:</strong> ${data.eventName}</p>
+                <p><strong>Service:</strong> ${data.serviceName}</p>
                 <p><strong>Date:</strong> ${data.eventDate}</p>
-                <p><strong>Package:</strong> ${data.packageName}</p>
+                <p><strong>Package:</strong> ${data.packageName} - ${this.formatCurrency(data.amount, data.currency)}</p>
+                ${addOnsHtml}
+                ${totalHtml}
               </div>
               
               <div class="info-box">
@@ -367,10 +472,45 @@ export class EmailService {
    */
   private getBookingAcceptedTemplate(data: {
     clientName: string;
-    eventName: string;
+    serviceName: string;
     eventDate: string;
+    packageName: string;
+    amount: number;
+    currency: string;
+    addOns?: Array<{
+      name: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }>;
+    totalAmount?: number;
     additionalInfo?: string;
   }): string {
+    const addOnsHtml = data.addOns?.length
+      ? `
+        <div style="margin-top: 15px;">
+          <h4 style="margin-bottom: 10px;">Add-ons:</h4>
+          <table style="width: 100%; border-collapse: collapse;">
+            ${data.addOns
+              .map(
+                (addOn) => `
+              <tr>
+                <td style="padding: 5px 0;">${addOn.name} ${addOn.quantity > 1 ? `(x${addOn.quantity})` : ""}</td>
+                <td style="padding: 5px 0; text-align: right;">${this.formatCurrency(addOn.totalPrice, data.currency)}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </table>
+        </div>
+      `
+      : "";
+
+    const totalHtml =
+      data.totalAmount && data.totalAmount !== data.amount
+        ? `<p style="margin-top: 15px; font-size: 18px;"><strong>Total:</strong> ${this.formatCurrency(data.totalAmount, data.currency)}</p>`
+        : "";
+
     return `
       <!DOCTYPE html>
       <html>
@@ -395,9 +535,12 @@ export class EmailService {
               <p>Great news! Your booking has been officially accepted and confirmed.</p>
               
               <div class="details">
-                <h3>Event Details:</h3>
-                <p><strong>Event:</strong> ${data.eventName}</p>
+                <h3>Booking Details:</h3>
+                <p><strong>Service:</strong> ${data.serviceName}</p>
                 <p><strong>Date:</strong> ${data.eventDate}</p>
+                <p><strong>Package:</strong> ${data.packageName} - ${this.formatCurrency(data.amount, data.currency)}</p>
+                ${addOnsHtml}
+                ${totalHtml}
               </div>
               
               ${

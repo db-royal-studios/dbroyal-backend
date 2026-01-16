@@ -87,6 +87,7 @@ model Service {
 
   events      Event[]
   packages    Package[]
+  addOns      AddOn[]
 
   @@index([isVisible])
   @@index([slug])
@@ -137,6 +138,42 @@ model PackagePricing {
 
   @@unique([packageId, country])
   @@index([packageId])
+  @@index([country])
+}
+
+// Add-on that can be added to bookings for specific services
+model AddOn {
+  id          String   @id @default(cuid())
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name        String   // e.g., "Extra outfit", "Extra photographer"
+  slug        String
+  description String?
+  isVisible   Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pricing     AddOnPricing[]
+  bookingAddOns BookingAddOn[]
+
+  @@unique([serviceId, slug])
+  @@index([serviceId])
+  @@index([isVisible])
+}
+
+model AddOnPricing {
+  id          String   @id @default(cuid())
+  addOnId     String
+  addOn       AddOn    @relation(fields: [addOnId], references: [id], onDelete: Cascade)
+  country     Country
+  price       Decimal  @db.Decimal(10, 2) // Price in local currency
+  currency    String   // e.g., "GBP", "NGN"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([addOnId, country])
+  @@index([addOnId])
   @@index([country])
 }
 
@@ -313,6 +350,7 @@ model Booking {
 
   assigned BookingAssignment[]
   payments Payment[]
+  addOns   BookingAddOn[]
 
   @@index([clientId])
   @@index([packageId])
@@ -320,6 +358,25 @@ model Booking {
   @@index([dateTime])
   @@index([country])
   @@index([paymentStatus])
+}
+
+// Add-ons selected for a specific booking with quantity and captured price
+model BookingAddOn {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addOnId     String
+  addOn       AddOn    @relation(fields: [addOnId], references: [id], onDelete: Cascade)
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(10, 2) // Price per unit at booking time
+  totalPrice  Decimal  @db.Decimal(10, 2) // unitPrice * quantity
+  currency    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([bookingId, addOnId])
+  @@index([bookingId])
+  @@index([addOnId])
 }
 
 model BookingAssignment {
