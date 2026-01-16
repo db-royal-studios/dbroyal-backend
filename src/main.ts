@@ -55,6 +55,7 @@ async function bootstrap() {
     "http://localhost:5174",
     "http://localhost:8000",
     "https://dbroyal.studio", // Production frontend
+    "https://www.dbroyal.studio",
     process.env.FRONTEND_URL, // Custom frontend URL
   ].filter(Boolean);
 
