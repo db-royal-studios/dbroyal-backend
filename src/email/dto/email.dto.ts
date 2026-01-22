@@ -92,6 +92,15 @@ export class BookingConfirmationEmailDto {
   totalAmount?: number;
 
   @ApiProperty({
+    description: "Deposit amount (if deposit booking)",
+    example: 27500,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  depositAmount?: number;
+
+  @ApiProperty({
     description: "Currency code (ISO 4217)",
     example: "NGN",
     required: false,
@@ -174,6 +183,15 @@ export class BookingPendingApprovalEmailDto {
   @IsNumber()
   @IsOptional()
   totalAmount?: number;
+
+  @ApiProperty({
+    description: "Deposit amount (if deposit booking)",
+    example: 27500,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  depositAmount?: number;
 
   @ApiProperty({
     description: "Currency code (ISO 4217)",
@@ -267,6 +285,15 @@ export class BookingAcceptedEmailDto {
   @IsString()
   @IsOptional()
   additionalInfo?: string;
+
+  @ApiProperty({
+    description: "Deposit amount (if deposit booking)",
+    example: 27500,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  depositAmount?: number;
 
   @ApiProperty({
     description: "Currency code (ISO 4217)",

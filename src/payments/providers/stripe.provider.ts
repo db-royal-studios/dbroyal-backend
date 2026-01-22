@@ -26,7 +26,7 @@ export class StripeProvider {
       bookingId: string;
       clientId: string;
       description?: string;
-    }
+    },
   ): Promise<Stripe.PaymentIntent> {
     try {
       const paymentIntent = await this.stripe.paymentIntents.create({
@@ -41,7 +41,7 @@ export class StripeProvider {
       return paymentIntent;
     } catch (error) {
       throw new BadRequestException(
-        `Failed to create payment intent: ${error.message}`
+        `Failed to create payment intent: ${error.message}`,
       );
     }
   }
@@ -50,13 +50,13 @@ export class StripeProvider {
    * Retrieve a Payment Intent
    */
   async retrievePaymentIntent(
-    paymentIntentId: string
+    paymentIntentId: string,
   ): Promise<Stripe.PaymentIntent> {
     try {
       return await this.stripe.paymentIntents.retrieve(paymentIntentId);
     } catch (error) {
       throw new BadRequestException(
-        `Failed to retrieve payment intent: ${error.message}`
+        `Failed to retrieve payment intent: ${error.message}`,
       );
     }
   }
@@ -65,13 +65,13 @@ export class StripeProvider {
    * Confirm a Payment Intent
    */
   async confirmPaymentIntent(
-    paymentIntentId: string
+    paymentIntentId: string,
   ): Promise<Stripe.PaymentIntent> {
     try {
       return await this.stripe.paymentIntents.confirm(paymentIntentId);
     } catch (error) {
       throw new BadRequestException(
-        `Failed to confirm payment intent: ${error.message}`
+        `Failed to confirm payment intent: ${error.message}`,
       );
     }
   }
@@ -80,13 +80,13 @@ export class StripeProvider {
    * Cancel a Payment Intent
    */
   async cancelPaymentIntent(
-    paymentIntentId: string
+    paymentIntentId: string,
   ): Promise<Stripe.PaymentIntent> {
     try {
       return await this.stripe.paymentIntents.cancel(paymentIntentId);
     } catch (error) {
       throw new BadRequestException(
-        `Failed to cancel payment intent: ${error.message}`
+        `Failed to cancel payment intent: ${error.message}`,
       );
     }
   }
@@ -97,7 +97,7 @@ export class StripeProvider {
   async createRefund(
     paymentIntentId: string,
     amount?: number,
-    reason?: string
+    reason?: string,
   ): Promise<Stripe.Refund> {
     try {
       const refundData: Stripe.RefundCreateParams = {
@@ -115,7 +115,7 @@ export class StripeProvider {
       return await this.stripe.refunds.create(refundData);
     } catch (error) {
       throw new BadRequestException(
-        `Failed to create refund: ${error.message}`
+        `Failed to create refund: ${error.message}`,
       );
     }
   }
@@ -124,7 +124,7 @@ export class StripeProvider {
    * Retrieve customer payment methods
    */
   async listPaymentMethods(
-    customerId: string
+    customerId: string,
   ): Promise<Stripe.PaymentMethod[]> {
     try {
       const paymentMethods = await this.stripe.paymentMethods.list({
@@ -134,7 +134,7 @@ export class StripeProvider {
       return paymentMethods.data;
     } catch (error) {
       throw new BadRequestException(
-        `Failed to list payment methods: ${error.message}`
+        `Failed to list payment methods: ${error.message}`,
       );
     }
   }
@@ -144,7 +144,7 @@ export class StripeProvider {
    */
   constructWebhookEvent(
     payload: string | Buffer,
-    signature: string
+    signature: string,
   ): Stripe.Event {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
@@ -155,11 +155,11 @@ export class StripeProvider {
       return this.stripe.webhooks.constructEvent(
         payload,
         signature,
-        webhookSecret
+        webhookSecret,
       );
     } catch (error) {
       throw new BadRequestException(
-        `Webhook signature verification failed: ${error.message}`
+        `Webhook signature verification failed: ${error.message}`,
       );
     }
   }

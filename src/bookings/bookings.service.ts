@@ -8,7 +8,7 @@ import { BookingAddOnDto } from "./dto";
 export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
   ) {}
 
   async create(data: {
@@ -24,6 +24,7 @@ export class BookingsService {
     country?: Country;
     assignedUserIds?: string[];
     addOns?: BookingAddOnDto[];
+    depositAmount?: number;
   }) {
     const { assignedUserIds, addOns, ...rest } = data;
     if (typeof rest.dateTime === "string")
@@ -66,20 +67,20 @@ export class BookingsService {
 
       // Check all add-ons exist and belong to the same service
       const invalidAddOns = addOnsData.filter(
-        (addOn) => addOn.serviceId !== packageWithPricing.serviceId
+        (addOn) => addOn.serviceId !== packageWithPricing.serviceId,
       );
       if (invalidAddOns.length > 0) {
         throw new BadRequestException(
-          `Add-ons must belong to the same service as the package: ${invalidAddOns.map((a) => a.name).join(", ")}`
+          `Add-ons must belong to the same service as the package: ${invalidAddOns.map((a) => a.name).join(", ")}`,
         );
       }
 
       const notFoundAddOnIds = addOnIds.filter(
-        (id) => !addOnsData.find((a) => a.id === id)
+        (id) => !addOnsData.find((a) => a.id === id),
       );
       if (notFoundAddOnIds.length > 0) {
         throw new BadRequestException(
-          `Add-ons not found: ${notFoundAddOnIds.join(", ")}`
+          `Add-ons not found: ${notFoundAddOnIds.join(", ")}`,
         );
       }
 
@@ -89,7 +90,7 @@ export class BookingsService {
         const pricing = addOnData.pricing[0];
         if (!pricing) {
           throw new BadRequestException(
-            `No pricing found for add-on "${addOnData.name}" in ${bookingCountry}`
+            `No pricing found for add-on "${addOnData.name}" in ${bookingCountry}`,
           );
         }
 
@@ -114,6 +115,7 @@ export class BookingsService {
       currency: pricing?.currency,
       paymentStatus: "UNPAID" as any,
       amountPaid: 0,
+      depositAmount: data.depositAmount,
     };
 
     // Optimized transaction: create booking and assignments in a single fast transaction
@@ -176,7 +178,7 @@ export class BookingsService {
       {
         maxWait: 5000, // Wait up to 5s for transaction to start
         timeout: 10000, // Transaction must complete within 10s
-      }
+      },
     );
 
     // Send email based on country (non-blocking, outside transaction)
@@ -200,6 +202,14 @@ export class BookingsService {
         booking.title ||
         "Your Service";
 
+      console.log("booking", booking);
+
+      // Calculate deposit if applicable
+      const depositAmount = booking.depositAmount
+        ? Number(booking.depositAmount)
+        : null;
+      const isDepositBooking = depositAmount !== null && depositAmount > 0;
+
       // UK bookings get automatic confirmation, Nigeria bookings need approval
       if (booking.country === Country.UK) {
         this.emailService
@@ -212,6 +222,7 @@ export class BookingsService {
             amount: Number(booking.price || 0),
             addOns: emailAddOns,
             totalAmount: bookingWithTotals.pricing.totalPrice,
+            depositAmount: isDepositBooking ? depositAmount : undefined,
             currency: booking.currency,
             country: booking.country,
           })
@@ -229,13 +240,14 @@ export class BookingsService {
             amount: Number(booking.price || 0),
             addOns: emailAddOns,
             totalAmount: bookingWithTotals.pricing.totalPrice,
+            depositAmount: isDepositBooking ? depositAmount : undefined,
             currency: booking.currency,
             country: booking.country,
           })
           .catch((error) => {
             console.error(
               "Failed to send booking pending approval email:",
-              error
+              error,
             );
           });
       }
@@ -249,7 +261,7 @@ export class BookingsService {
     startDate?: string,
     endDate?: string,
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
   ) {
     const where: any = country ? { country } : {};
 
@@ -300,7 +312,7 @@ export class BookingsService {
 
     // Calculate totals for each booking
     const bookingsWithTotals = bookings.map((booking) =>
-      this.calculateBookingTotals(booking)
+      this.calculateBookingTotals(booking),
     );
 
     return {
@@ -401,6 +413,12 @@ export class BookingsService {
       // Calculate totals
       const bookingWithTotals = this.calculateBookingTotals(updatedBooking);
 
+      // Calculate deposit if applicable
+      const depositAmount = updatedBooking.depositAmount
+        ? Number(updatedBooking.depositAmount)
+        : null;
+      const isDepositBooking = depositAmount !== null && depositAmount > 0;
+
       this.emailService
         .sendBookingAccepted({
           to: updatedBooking.client.email,
@@ -411,6 +429,7 @@ export class BookingsService {
           amount: Number(updatedBooking.price || 0),
           addOns: emailAddOns,
           totalAmount: bookingWithTotals.pricing.totalPrice,
+          depositAmount: isDepositBooking ? depositAmount : undefined,
           additionalInfo: data.notes || updatedBooking.notes,
           currency: updatedBooking.currency,
           country: updatedBooking.country,
@@ -504,7 +523,7 @@ export class BookingsService {
     const packagePrice = Number(booking.price || 0);
     const addOnsTotal = (booking.addOns || []).reduce(
       (sum: number, ba: any) => sum + Number(ba.totalPrice || 0),
-      0
+      0,
     );
     const totalPrice = packagePrice + addOnsTotal;
 

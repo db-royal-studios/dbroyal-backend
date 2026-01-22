@@ -16,7 +16,7 @@ export class EmailService {
   constructor() {
     // Log configuration (without password) for debugging
     this.logger.log(
-      `Configuring SMTP with host: ${process.env.SMTP_HOST}, port: ${process.env.SMTP_PORT}, user: ${process.env.SMTP_USER}`
+      `Configuring SMTP with host: ${process.env.SMTP_HOST}, port: ${process.env.SMTP_PORT}, user: ${process.env.SMTP_USER}`,
     );
 
     this.transporter = nodemailer.createTransport({
@@ -50,7 +50,7 @@ export class EmailService {
       this.logger.log("SMTP connection verified successfully");
     } catch (error) {
       this.logger.error(
-        `SMTP connection verification failed: ${error.message}`
+        `SMTP connection verification failed: ${error.message}`,
       );
       this.logger.error("Please check your SMTP credentials in the .env file");
     }
@@ -60,7 +60,7 @@ export class EmailService {
    * Send booking confirmation email to client
    */
   async sendBookingConfirmation(
-    dto: BookingConfirmationEmailDto
+    dto: BookingConfirmationEmailDto,
   ): Promise<void> {
     try {
       const {
@@ -74,6 +74,7 @@ export class EmailService {
         totalAmount,
         currency,
         country,
+        depositAmount,
       } = dto;
 
       const subject = `Booking Confirmation - ${serviceName}`;
@@ -86,6 +87,7 @@ export class EmailService {
         addOns,
         totalAmount,
         currency: currency || this.getCurrencyFromCountry(country),
+        depositAmount,
       });
 
       await this.transporter.sendMail({
@@ -98,7 +100,7 @@ export class EmailService {
       this.logger.log(`Booking confirmation email sent to ${to}`);
     } catch (error) {
       this.logger.error(
-        `Failed to send booking confirmation email: ${error.message}`
+        `Failed to send booking confirmation email: ${error.message}`,
       );
       throw error;
     }
@@ -108,7 +110,7 @@ export class EmailService {
    * Send booking pending approval email to client (for Nigeria bookings)
    */
   async sendBookingPendingApproval(
-    dto: BookingPendingApprovalEmailDto
+    dto: BookingPendingApprovalEmailDto,
   ): Promise<void> {
     try {
       const {
@@ -146,7 +148,7 @@ export class EmailService {
       this.logger.log(`Booking pending approval email sent to ${to}`);
     } catch (error) {
       this.logger.error(
-        `Failed to send booking pending approval email: ${error.message}`
+        `Failed to send booking pending approval email: ${error.message}`,
       );
       throw error;
     }
@@ -169,6 +171,7 @@ export class EmailService {
         additionalInfo,
         currency,
         country,
+        depositAmount,
       } = dto;
 
       const subject = `Booking Accepted - ${serviceName}`;
@@ -181,6 +184,7 @@ export class EmailService {
         addOns,
         totalAmount,
         additionalInfo,
+        depositAmount,
         currency: currency || this.getCurrencyFromCountry(country),
       });
 
@@ -194,7 +198,7 @@ export class EmailService {
       this.logger.log(`Booking accepted email sent to ${to}`);
     } catch (error) {
       this.logger.error(
-        `Failed to send booking accepted email: ${error.message}`
+        `Failed to send booking accepted email: ${error.message}`,
       );
       throw error;
     }
@@ -225,7 +229,7 @@ export class EmailService {
       this.logger.log(`Download ready email sent to ${to}`);
     } catch (error) {
       this.logger.error(
-        `Failed to send download ready email: ${error.message}`
+        `Failed to send download ready email: ${error.message}`,
       );
       throw error;
     }
@@ -305,6 +309,7 @@ export class EmailService {
       totalPrice: number;
     }>;
     totalAmount?: number;
+    depositAmount?: number;
   }): string {
     const addOnsHtml = data.addOns?.length
       ? `
@@ -318,7 +323,7 @@ export class EmailService {
                 <td style="padding: 5px 0;">${addOn.name} ${addOn.quantity > 1 ? `(x${addOn.quantity})` : ""}</td>
                 <td style="padding: 5px 0; text-align: right;">${this.formatCurrency(addOn.totalPrice, data.currency)}</td>
               </tr>
-            `
+            `,
               )
               .join("")}
           </table>
@@ -330,6 +335,17 @@ export class EmailService {
       data.totalAmount && data.totalAmount !== data.amount
         ? `<p style="margin-top: 15px; font-size: 18px;"><strong>Total:</strong> ${this.formatCurrency(data.totalAmount, data.currency)}</p>`
         : "";
+
+    const depositHtml = data.depositAmount
+      ? `
+        <div style="background-color: #E8F5E9; padding: 15px; border-radius: 4px; margin: 15px 0; border: 2px solid #4CAF50;">
+          <h4 style="margin-top: 0; color: #2E7D32;">💰 Payment Information</h4>
+          <p style="margin: 5px 0; font-size: 16px;"><strong>Deposit Required:</strong> ${this.formatCurrency(data.depositAmount, data.currency)}</p>
+          ${data.totalAmount ? `<p style="margin: 5px 0; color: #666;">Full Amount: ${this.formatCurrency(data.totalAmount, data.currency)}</p>` : ""}
+          <p style="margin: 10px 0 0 0; font-size: 14px; color: #555;">A 50% deposit is required to secure your booking. The remaining balance will be due before the event.</p>
+        </div>
+      `
+      : totalHtml;
 
     return `
       <!DOCTYPE html>
@@ -360,8 +376,8 @@ export class EmailService {
                 <p><strong>Date:</strong> ${data.eventDate}</p>
                 <p><strong>Package:</strong> ${data.packageName} - ${this.formatCurrency(data.amount, data.currency)}</p>
                 ${addOnsHtml}
-                ${totalHtml}
               </div>
+              ${depositHtml}
               
               <p>We're excited to capture your special moments! Our team will be in touch with you shortly to discuss the details.</p>
               <p>If you have any questions, please don't hesitate to reach out to us.</p>
@@ -392,6 +408,7 @@ export class EmailService {
       totalPrice: number;
     }>;
     totalAmount?: number;
+    depositAmount?: number;
   }): string {
     const addOnsHtml = data.addOns?.length
       ? `
@@ -405,7 +422,7 @@ export class EmailService {
                 <td style="padding: 5px 0;">${addOn.name} ${addOn.quantity > 1 ? `(x${addOn.quantity})` : ""}</td>
                 <td style="padding: 5px 0; text-align: right;">${this.formatCurrency(addOn.totalPrice, data.currency)}</td>
               </tr>
-            `
+            `,
               )
               .join("")}
           </table>
@@ -417,6 +434,17 @@ export class EmailService {
       data.totalAmount && data.totalAmount !== data.amount
         ? `<p style="margin-top: 15px; font-size: 18px;"><strong>Total:</strong> ${this.formatCurrency(data.totalAmount, data.currency)}</p>`
         : "";
+
+    const depositHtml = data.depositAmount
+      ? `
+        <div style="background-color: #FFF8E1; padding: 15px; border-radius: 4px; margin: 15px 0; border: 2px solid #FF9800;">
+          <h4 style="margin-top: 0; color: #E65100;">💰 Payment Information</h4>
+          <p style="margin: 5px 0; font-size: 16px;"><strong>Deposit Required:</strong> ${this.formatCurrency(data.depositAmount, data.currency)}</p>
+          ${data.totalAmount ? `<p style="margin: 5px 0; color: #666;">Full Amount: ${this.formatCurrency(data.totalAmount, data.currency)}</p>` : ""}
+          <p style="margin: 10px 0 0 0; font-size: 14px; color: #555;">A 50% deposit is required to secure your booking. Payment details will be shared once your booking is approved.</p>
+        </div>
+      `
+      : totalHtml;
 
     return `
       <!DOCTYPE html>
@@ -447,8 +475,8 @@ export class EmailService {
                 <p><strong>Date:</strong> ${data.eventDate}</p>
                 <p><strong>Package:</strong> ${data.packageName} - ${this.formatCurrency(data.amount, data.currency)}</p>
                 ${addOnsHtml}
-                ${totalHtml}
               </div>
+              ${depositHtml}
               
               <div class="info-box">
                 <h4>⏳ What happens next?</h4>
@@ -484,6 +512,7 @@ export class EmailService {
       totalPrice: number;
     }>;
     totalAmount?: number;
+    depositAmount?: number;
     additionalInfo?: string;
   }): string {
     const addOnsHtml = data.addOns?.length
@@ -498,7 +527,7 @@ export class EmailService {
                 <td style="padding: 5px 0;">${addOn.name} ${addOn.quantity > 1 ? `(x${addOn.quantity})` : ""}</td>
                 <td style="padding: 5px 0; text-align: right;">${this.formatCurrency(addOn.totalPrice, data.currency)}</td>
               </tr>
-            `
+            `,
               )
               .join("")}
           </table>
@@ -510,6 +539,17 @@ export class EmailService {
       data.totalAmount && data.totalAmount !== data.amount
         ? `<p style="margin-top: 15px; font-size: 18px;"><strong>Total:</strong> ${this.formatCurrency(data.totalAmount, data.currency)}</p>`
         : "";
+
+    const depositHtml = data.depositAmount
+      ? `
+        <div style="background-color: #E3F2FD; padding: 15px; border-radius: 4px; margin: 15px 0; border: 2px solid #2196F3;">
+          <h4 style="margin-top: 0; color: #1565C0;">💰 Payment Information</h4>
+          <p style="margin: 5px 0; font-size: 16px;"><strong>Deposit Required:</strong> ${this.formatCurrency(data.depositAmount, data.currency)}</p>
+          ${data.totalAmount ? `<p style="margin: 5px 0; color: #666;">Full Amount: ${this.formatCurrency(data.totalAmount, data.currency)}</p>` : ""}
+          <p style="margin: 10px 0 0 0; font-size: 14px; color: #555;">Please pay the 50% deposit to finalize your booking. The remaining balance will be due before the event.</p>
+        </div>
+      `
+      : totalHtml;
 
     return `
       <!DOCTYPE html>
@@ -540,8 +580,8 @@ export class EmailService {
                 <p><strong>Date:</strong> ${data.eventDate}</p>
                 <p><strong>Package:</strong> ${data.packageName} - ${this.formatCurrency(data.amount, data.currency)}</p>
                 ${addOnsHtml}
-                ${totalHtml}
               </div>
+              ${depositHtml}
               
               ${
                 data.additionalInfo
