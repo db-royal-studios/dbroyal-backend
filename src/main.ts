@@ -4,11 +4,18 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { apiReference } from "@scalar/nestjs-api-reference";
 import { AppModule } from "./app.module";
 import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
+import * as express from "express";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ["error", "warn", "log", "debug", "verbose"],
   });
+
+  // Configure raw body parsing for Stripe webhooks (must be before global prefix)
+  app.use(
+    "/api/v1/payments/stripe/webhook",
+    express.raw({ type: "application/json" }),
+  );
 
   app.setGlobalPrefix("api/v1", {
     exclude: ["Health"],
@@ -33,7 +40,7 @@ async function bootstrap() {
         // Log validation errors to console for debugging
         console.error(
           "❌ Validation Error:",
-          JSON.stringify(messages, null, 2)
+          JSON.stringify(messages, null, 2),
         );
 
         return new BadRequestException({
@@ -41,7 +48,7 @@ async function bootstrap() {
           errors: messages,
         });
       },
-    })
+    }),
   );
 
   app.useGlobalFilters(new PrismaExceptionFilter());
@@ -89,7 +96,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle("DB Royal API V1")
     .setDescription(
-      "DB Royal API v1 for photography service with country-based multi-tenancy. Use X-Country header (NG or UK) to scope requests to a specific region."
+      "DB Royal API v1 for photography service with country-based multi-tenancy. Use X-Country header (NG or UK) to scope requests to a specific region.",
     )
     .setVersion("1.0")
     .addBearerAuth()
@@ -101,7 +108,7 @@ async function bootstrap() {
         description:
           "Country code for multi-tenancy (NG for Nigeria, UK for United Kingdom). Defaults to NG if not provided. Use this header to scope all operations to a specific country.",
       },
-      "X-Country"
+      "X-Country",
     )
     .build();
 
@@ -115,7 +122,7 @@ async function bootstrap() {
     apiReference({
       theme: "default",
       url: "/openapi.json",
-    })
+    }),
   );
   await app.listen(process.env.PORT ?? 3000);
 }

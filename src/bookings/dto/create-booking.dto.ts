@@ -109,4 +109,14 @@ export class CreateBookingDto {
   @ValidateNested({ each: true })
   @Type(() => BookingAddOnDto)
   addOns?: BookingAddOnDto[];
+
+  @ApiPropertyOptional({
+    description:
+      "Deposit amount (typically 50% of total price for deposit bookings)",
+    example: 25000,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  depositAmount?: number;
 }

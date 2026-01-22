@@ -17,7 +17,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripeProvider: StripeProvider,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -28,7 +28,7 @@ export class PaymentsService {
     amount: number,
     currency: string,
     description?: string,
-    paidBy?: string
+    paidBy?: string,
   ) {
     // Verify download exists
     const download = await this.prisma.downloadSelection.findUnique({
@@ -43,7 +43,7 @@ export class PaymentsService {
     // Check if download is in correct status
     if (download.deliveryStatus !== "PENDING_PAYMENT") {
       throw new BadRequestException(
-        "Download request must be in PENDING_PAYMENT status"
+        "Download request must be in PENDING_PAYMENT status",
       );
     }
 
@@ -57,7 +57,7 @@ export class PaymentsService {
         description:
           description ||
           `Payment for ${download.photoCount} photos download - Event ${download.event.name || "Download"}`,
-      }
+      },
     );
 
     // Update download record with payment info
@@ -138,7 +138,7 @@ export class PaymentsService {
       throw new BadRequestException("Payment was canceled");
     } else {
       throw new BadRequestException(
-        `Payment status is ${paymentIntent.status}, not succeeded`
+        `Payment status is ${paymentIntent.status}, not succeeded`,
       );
     }
   }
@@ -189,7 +189,7 @@ export class PaymentsService {
   getBankAccountDetails(country: Country) {
     if (country !== Country.NG) {
       throw new BadRequestException(
-        "Bank transfer is only available for Nigeria"
+        "Bank transfer is only available for Nigeria",
       );
     }
 
@@ -220,7 +220,7 @@ export class PaymentsService {
     amount: number,
     currency: string,
     description?: string,
-    paidBy?: string
+    paidBy?: string,
   ) {
     // Verify booking exists and is for UK
     const booking = await this.prisma.booking.findUnique({
@@ -234,7 +234,7 @@ export class PaymentsService {
 
     if (booking.country !== Country.UK) {
       throw new BadRequestException(
-        "Stripe payments are only available for UK bookings"
+        "Stripe payments are only available for UK bookings",
       );
     }
 
@@ -248,7 +248,7 @@ export class PaymentsService {
         description:
           description ||
           `Payment for ${booking.package.name} - ${booking.title || "Booking"}`,
-      }
+      },
     );
 
     // Create payment record in database
@@ -329,7 +329,7 @@ export class PaymentsService {
       throw new BadRequestException("Payment was canceled");
     } else {
       throw new BadRequestException(
-        `Payment status is ${paymentIntent.status}, not succeeded`
+        `Payment status is ${paymentIntent.status}, not succeeded`,
       );
     }
   }
@@ -347,7 +347,7 @@ export class PaymentsService {
       transferReference?: string;
       paidBy?: string;
       notes?: string;
-    }
+    },
   ) {
     // Verify booking exists and is for Nigeria
     const booking = await this.prisma.booking.findUnique({
@@ -361,7 +361,7 @@ export class PaymentsService {
 
     if (booking.country !== Country.NG) {
       throw new BadRequestException(
-        "Bank transfer is only available for Nigeria bookings"
+        "Bank transfer is only available for Nigeria bookings",
       );
     }
 
@@ -392,7 +392,7 @@ export class PaymentsService {
     paymentId: string,
     approved: boolean,
     adminUserId: string,
-    notes?: string
+    notes?: string,
   ) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
@@ -405,13 +405,13 @@ export class PaymentsService {
 
     if (payment.method !== PaymentMethod.BANK_TRANSFER) {
       throw new BadRequestException(
-        "Only bank transfer payments require manual verification"
+        "Only bank transfer payments require manual verification",
       );
     }
 
     if (payment.status !== PaymentStatus.PENDING) {
       throw new BadRequestException(
-        `Payment status is ${payment.status}, cannot verify`
+        `Payment status is ${payment.status}, cannot verify`,
       );
     }
 
@@ -562,7 +562,7 @@ export class PaymentsService {
 
       if (!booking) {
         this.logger.warn(
-          `Booking ${bookingId} not found for email notification`
+          `Booking ${bookingId} not found for email notification`,
         );
         return;
       }
@@ -593,12 +593,12 @@ export class PaymentsService {
       });
 
       this.logger.log(
-        `Booking accepted email sent to ${booking.client.email} for booking ${bookingId}`
+        `Booking accepted email sent to ${booking.client.email} for booking ${bookingId}`,
       );
     } catch (error) {
       // Log error but don't throw - email failure shouldn't break payment flow
       this.logger.error(
-        `Failed to send booking accepted email for booking ${bookingId}: ${error.message}`
+        `Failed to send booking accepted email for booking ${bookingId}: ${error.message}`,
       );
     }
   }
@@ -621,7 +621,7 @@ export class PaymentsService {
 
       if (!download) {
         this.logger.warn(
-          `Download ${downloadId} not found for email notification`
+          `Download ${downloadId} not found for email notification`,
         );
         return;
       }
@@ -649,12 +649,12 @@ export class PaymentsService {
       });
 
       this.logger.log(
-        `Download ready email sent to ${recipientEmail} for download ${downloadId}`
+        `Download ready email sent to ${recipientEmail} for download ${downloadId}`,
       );
     } catch (error) {
       // Log error but don't throw - email failure shouldn't break payment flow
       this.logger.error(
-        `Failed to send download ready email for download ${downloadId}: ${error.message}`
+        `Failed to send download ready email for download ${downloadId}: ${error.message}`,
       );
     }
   }
@@ -679,7 +679,7 @@ export class PaymentsService {
     // Calculate total paid amount
     const totalPaid = booking.payments.reduce(
       (sum, payment) => sum + Number(payment.amount),
-      0
+      0,
     );
 
     const totalPrice = booking.price ? Number(booking.price) : 0;
@@ -716,30 +716,46 @@ export class PaymentsService {
    * Handle Stripe webhook events
    */
   async handleStripeWebhook(event: Stripe.Event) {
+    this.logger.log(`🔔 Processing webhook event: ${event.type} (${event.id})`);
+
     switch (event.type) {
       case "payment_intent.succeeded":
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        this.logger.log(
+          `💳 Payment Intent Succeeded: ${paymentIntent.id} (${paymentIntent.amount / 100} ${paymentIntent.currency})`,
+        );
+
         // Check if it's a booking or download payment
         const bookingPayment = await this.prisma.payment.findFirst({
           where: { stripePaymentIntentId: paymentIntent.id },
         });
         if (bookingPayment) {
+          this.logger.log(`📋 Found booking payment: ${bookingPayment.id}`);
           await this.confirmStripePayment(paymentIntent.id);
+          this.logger.log(`✅ Booking payment confirmed`);
         } else {
           // Try download payment
           const downloadPayment = await this.prisma.downloadSelection.findFirst(
             {
               where: { stripePaymentIntentId: paymentIntent.id },
-            }
+            },
           );
           if (downloadPayment) {
+            this.logger.log(`📥 Found download payment: ${downloadPayment.id}`);
             await this.confirmDownloadPayment(paymentIntent.id);
+            this.logger.log(`✅ Download payment confirmed`);
+          } else {
+            this.logger.warn(
+              `⚠️  No payment record found for payment intent: ${paymentIntent.id}`,
+            );
           }
         }
         break;
 
       case "payment_intent.payment_failed":
         const failedIntent = event.data.object as Stripe.PaymentIntent;
+        this.logger.warn(`❌ Payment Intent Failed: ${failedIntent.id}`);
+
         // Handle failed booking payments
         await this.prisma.payment.updateMany({
           where: { stripePaymentIntentId: failedIntent.id },
@@ -754,6 +770,8 @@ export class PaymentsService {
 
       case "charge.refunded":
         const charge = event.data.object as Stripe.Charge;
+        this.logger.log(`💰 Charge Refunded: ${charge.id}`);
+
         const payment = await this.prisma.payment.findFirst({
           where: { stripeChargeId: charge.id },
         });
@@ -772,6 +790,7 @@ export class PaymentsService {
           });
 
           await this.updateBookingPaymentStatus(payment.bookingId);
+          this.logger.log(`✅ Refund processed for payment: ${payment.id}`);
         }
         break;
 
@@ -789,7 +808,7 @@ export class PaymentsService {
     paymentId: string,
     amount?: number,
     reason?: string,
-    adminUserId?: string
+    adminUserId?: string,
   ) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
@@ -815,7 +834,7 @@ export class PaymentsService {
       await this.stripeProvider.createRefund(
         payment.stripePaymentIntentId,
         refundAmount,
-        reason
+        reason,
       );
 
       // Update will happen via webhook

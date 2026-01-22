@@ -58,14 +58,14 @@ export class PaymentsController {
   @ApiResponse({ status: 404, description: "Download not found" })
   createDownloadPayment(
     @Param("downloadId") downloadId: string,
-    @Body() dto: CreateStripePaymentDto
+    @Body() dto: CreateStripePaymentDto,
   ) {
     return this.paymentsService.createDownloadPayment(
       downloadId,
       dto.amount,
       dto.currency,
       dto.description,
-      dto.paidBy
+      dto.paidBy,
     );
   }
 
@@ -80,14 +80,14 @@ export class PaymentsController {
   @ApiResponse({ status: 404, description: "Booking not found" })
   createStripePayment(
     @Param("bookingId") bookingId: string,
-    @Body() dto: CreateStripePaymentDto
+    @Body() dto: CreateStripePaymentDto,
   ) {
     return this.paymentsService.createStripePayment(
       bookingId,
       dto.amount,
       dto.currency,
       dto.description,
-      dto.paidBy
+      dto.paidBy,
     );
   }
 
@@ -101,7 +101,7 @@ export class PaymentsController {
   @ApiResponse({ status: 404, description: "Booking not found" })
   createBankTransferPayment(
     @Param("bookingId") bookingId: string,
-    @Body() dto: CreateBankTransferPaymentDto
+    @Body() dto: CreateBankTransferPaymentDto,
   ) {
     return this.paymentsService.createBankTransferPayment(bookingId, {
       amount: dto.amount,
@@ -141,7 +141,7 @@ export class PaymentsController {
   @ApiResponse({ status: 404, description: "Payment not found" })
   verifyPayment(
     @Body() dto: VerifyPaymentDto,
-    @Query("adminUserId") adminUserId?: string
+    @Query("adminUserId") adminUserId?: string,
   ) {
     if (!adminUserId) {
       throw new BadRequestException("Admin user ID is required");
@@ -150,7 +150,7 @@ export class PaymentsController {
       dto.paymentId,
       dto.approved,
       adminUserId,
-      dto.notes
+      dto.notes,
     );
   }
 
@@ -211,13 +211,13 @@ export class PaymentsController {
   refundPayment(
     @Param("paymentId") paymentId: string,
     @Body() body: { amount?: number; reason?: string },
-    @Query("adminUserId") adminUserId?: string
+    @Query("adminUserId") adminUserId?: string,
   ) {
     return this.paymentsService.refundPayment(
       paymentId,
       body.amount,
       body.reason,
-      adminUserId
+      adminUserId,
     );
   }
 
@@ -228,26 +228,37 @@ export class PaymentsController {
   @ApiResponse({ status: 400, description: "Webhook verification failed" })
   async handleStripeWebhook(
     @Headers("stripe-signature") signature: string,
-    @Req() req: RawBodyRequest<Request>
+    @Req() req: RawBodyRequest<Request>,
   ) {
+    console.log("🔔 Webhook received at:", new Date().toISOString());
+    console.log("📝 Signature present:", !!signature);
+    console.log("📦 Body present:", !!req.rawBody);
+
     if (!signature) {
+      console.log("❌ Missing stripe-signature header");
       throw new BadRequestException("Missing stripe-signature header");
     }
 
     const rawBody = req.rawBody;
     if (!rawBody) {
+      console.log("❌ Missing request body");
       throw new BadRequestException("Missing request body");
     }
 
-    // Note: You'll need to configure NestJS to preserve raw body for this endpoint
-    // Add this to main.ts for the webhook route:
-    // app.use('/payments/stripe/webhook', express.raw({ type: 'application/json' }));
+    try {
+      const event = this.paymentsService[
+        "stripeProvider"
+      ].constructWebhookEvent(rawBody, signature);
 
-    const event = this.paymentsService["stripeProvider"].constructWebhookEvent(
-      rawBody,
-      signature
-    );
+      console.log("✅ Webhook verified, event type:", event.type);
+      console.log("🆔 Event ID:", event.id);
 
-    return this.paymentsService.handleStripeWebhook(event);
+      const result = await this.paymentsService.handleStripeWebhook(event);
+      console.log("✅ Webhook processed successfully");
+      return result;
+    } catch (error) {
+      console.error("❌ Webhook processing error:", error.message);
+      throw error;
+    }
   }
 }
